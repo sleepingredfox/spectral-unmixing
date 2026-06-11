@@ -286,16 +286,13 @@ class SpectralUnmixingMainWindow:
             combo.setCurrentIndex(idx)
 
     def _set_window_properties(self) -> None:
-        """Set window title and geometry (import-safe).
+        """Set window title and geometry (import-safe)."""
+        from PySide6.QtCore import Qt
 
-        Note: WindowMaximized is *not* set here because doing so makes
-        splitter sizes environment-dependent (constrained by whichever
-        screen geometry happens to be available).  Callers that want a
-        maximised window must use :meth:`show_full_size` instead.
-        """
         self._impl.setWindowTitle("Spectral Unmixing")
         self._impl.resize(1400, 900)
         self._impl.setMinimumSize(1000, 700)
+        self._impl.setWindowState(self._impl.windowState() | Qt.WindowState.WindowMaximized)
 
     def show_full_size(self) -> None:
         """Show the window using the available screen area and maximized state."""
@@ -1885,6 +1882,10 @@ class SpectralUnmixingMainWindow:
 
             ref_cube = loader.load_image_cube(info["ref_dir"], wls)
             dark_cube = loader.load_image_cube(info["dark_ref_dir"], wls)
+            processing.validate_image_cube_shapes_match(
+                ("ref", ref_cube),
+                ("dark_ref", dark_cube),
+            )
 
             chrom_spectra = loader.load_chromophore_spectra(data_dir)
             led_wl, led_em = loader.load_led_emission(data_dir, wls)
@@ -1959,6 +1960,12 @@ class SpectralUnmixingMainWindow:
             results: Dict[str, Dict[str, Any]] = {}
             for sample_dir, sample_name in zip(info["samples"], info["sample_names"]):
                 sample_cube = loader.load_image_cube(sample_dir, wls)
+                processing.validate_reflectance_cube_shapes(
+                    sample_cube,
+                    ref_cube,
+                    dark_cube,
+                    sample_name=sample_name,
+                )
                 reflectance = processing.compute_reflectance(sample_cube, ref_cube, dark_cube)
                 od_cube = processing.compute_optical_density(reflectance)
                 solver_info = None
